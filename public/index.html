@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Lear-GPT (Architecture)</title>
+    <style>
+      :root {
+        --bg: #0f2740; /* 濃紺 */
+        --panel: #1b3960; /* ひとつ明るい紺 */
+        --ink: #f9f2c6; /* 黄味がかった金色 */
+        --ink-dim: #cfc89d;
+        --accent: #ffe066; /* タイトルの金色 */
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.6 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          "Liberation Mono",
+          "Courier New",
+          monospace;
+      }
+      .wrap {
+        max-width: 860px;
+        margin: 24px auto;
+        padding: 0 16px;
+      }
+      .title {
+        font-size: 28px;
+        letter-spacing: 1px;
+        color: var(--accent);
+        border-bottom: 1px dashed var(--ink-dim);
+        padding-bottom: 8px;
+        margin-bottom: 18px;
+        white-space: pre;
+        min-height: 1.2em;
+      }
+      /* タイピング風 */
+      .caret {
+        display: inline-block;
+        width: 8px;
+        background: var(--accent);
+        margin-left: 4px;
+        animation: blink 1s steps(1) infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid #0b1e33;
+        border-radius: 10px;
+        padding: 16px;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+      }
+      label {
+        display: block;
+        margin: 10px 0 6px;
+      }
+      input[type="text"],
+      select {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #0b1e33;
+        background: #0e2340;
+        color: var(--ink);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font: inherit;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 140px;
+        gap: 12px;
+      }
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 10px;
+      }
+      button {
+        padding: 10px 20px;
+        font: inherit;
+        color: #0e2340;
+        background: var(--accent);
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      button[disabled] {
+        opacity: 0.6;
+        cursor: progress;
+      }
+      .hint {
+        color: var(--ink-dim);
+        font-size: 13px;
+        margin-top: 6px;
+      }
+      .err {
+        color: #ffb2b2;
+        margin-top: 8px;
+      }
+      pre.output {
+        margin-top: 18px;
+        padding: 14px;
+        background: #0e2340;
+        border: 1px solid #0b1e33;
+        border-radius: 10px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        min-height: 2em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div id="typer" class="title"></div>
+
+      <div class="panel">
+        <div class="row">
+          <div>
+            <label for="letters">5文字のアルファベット（任意）</label>
+            <input
+              id="letters"
+              type="text"
+              inputmode="latin"
+              autocomplete="off"
+              maxlength="10"
+              placeholder="例: PLXRA（空欄でも可）"
+            />
+            <div id="hint" class="hint">
+              ※ 入力は自動的に半角大文字に整形されます。5文字ちょうどなら AABBA
+              の頭字に使用。
+            </div>
+          </div>
+
+          <div>
+            <label for="count">生成数</label>
+            <select id="count">
+              <option>1</option>
+              <option>2</option>
+              <option>3</option>
+              <option>4</option>
+              <option>5</option>
+              <option>6</option>
+              <option>7</option>
+              <option>8</option>
+              <option>9</option>
+              <option>10</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="go">生成</button>
+          <label style="display: flex; align-items: center; gap: 8px">
+            <input id="jp" type="checkbox" /> 日本語訳を付ける
+          </label>
+        </div>
+
+        <div id="err" class="err" aria-live="polite"></div>
+        <pre id="out" class="output"></pre>
+      </div>
+    </div>
+
+    <script>
+      /* タイピング風タイトル */
+      (function () {
+        const text = "Lear-GPT (Architecture)";
+        const el = document.getElementById("typer");
+        const caret = document.createElement("span");
+        caret.className = "caret";
+        let i = 0;
+        const tick = () => {
+          el.textContent = text.slice(0, i++);
+          el.appendChild(caret);
+          if (i <= text.length) setTimeout(tick, 60);
+        };
+        tick();
+      })();
+
+      /* 入力を常に半角大文字の英字だけに整える */
+      const lettersEl = document.getElementById("letters");
+      lettersEl.addEventListener("input", () => {
+        const cleaned = (lettersEl.value || "")
+          .replace(/[Ａ-Ｚａ-ｚ]/g, (s) =>
+            String.fromCharCode(s.charCodeAt(0) - 0xfee0),
+          ) // 全角→半角
+          .replace(/[^A-Za-z]/g, "") // 非英字除去
+          .toUpperCase();
+        lettersEl.value = cleaned;
+      });
+
+      /* 生成 */
+      const goBtn = document.getElementById("go");
+      const out = document.getElementById("out");
+      const errBox = document.getElementById("err");
+      const countEl = document.getElementById("count");
+      const jpEl = document.getElementById("jp");
+
+      async function generate() {
+        errBox.textContent = "";
+        out.textContent = "";
+        goBtn.disabled = true;
+        const original = goBtn.textContent;
+        goBtn.textContent = "生成中…";
+
+        const letters = lettersEl.value.trim().toUpperCase(); // 空でもOK
+        const count = parseInt(countEl.value, 10);
+        const jpWanted = jpEl.checked;
+
+        try {
+          // サーバー到達確認（任意：失敗すると早めに通知）
+          // const ping = await fetch("/health"); if(!ping.ok) throw new Error("Server not ready");
+
+          const res = await fetch("/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ letters, count, jpWanted }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error((data && data.error) || "Server error");
+
+          out.textContent = String(data.text || "").trim();
+          if (!out.textContent) {
+            out.textContent = "(空の応答)";
+          }
+        } catch (e) {
+          errBox.textContent = "⚠ エラー: " + (e && e.message ? e.message : e);
+        } finally {
+          goBtn.disabled = false;
+          goBtn.textContent = original;
+        }
+      }
+      goBtn.addEventListener("click", generate);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,12 @@
+entrypoint = "server.js"
+modules = ["nodejs-22"]
+
+[deployment]
+run = ["bash", "-lc", "npm start"]
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[agent]
+expertMode = true
