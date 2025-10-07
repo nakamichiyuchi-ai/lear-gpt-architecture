@@ -222,7 +222,9 @@
         const jpWanted = jpEl.checked;
 
         try {
-          const API_BASE = "https://あなたのrender名.onrender.com"; // ←ここを自分のURLに！
+          // ✅ Render側のAPIエンドポイント
+          const API_BASE = "https://lear-gpt-architecture.onrender.com";
+
           const res = await fetch(`${API_BASE}/api/generate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
