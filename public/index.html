@@ -6,11 +6,11 @@
     <title>Lear-GPT (Architecture)</title>
     <style>
       :root {
-        --bg: #0f2740; /* 濃紺 */
-        --panel: #1b3960; /* ひとつ明るい紺 */
-        --ink: #f9f2c6; /* 黄味がかった金色 */
+        --bg: #0f2740;
+        --panel: #1b3960;
+        --ink: #f9f2c6;
         --ink-dim: #cfc89d;
-        --accent: #ffe066; /* タイトルの金色 */
+        --accent: #ffe066;
       }
       html,
       body {
@@ -45,7 +45,6 @@
         white-space: pre;
         min-height: 1.2em;
       }
-      /* タイピング風 */
       .caret {
         display: inline-block;
         width: 8px;
@@ -58,7 +57,6 @@
           opacity: 0;
         }
       }
-
       .panel {
         background: var(--panel);
         border: 1px solid #0b1e33;
@@ -199,8 +197,8 @@
         const cleaned = (lettersEl.value || "")
           .replace(/[Ａ-Ｚａ-ｚ]/g, (s) =>
             String.fromCharCode(s.charCodeAt(0) - 0xfee0),
-          ) // 全角→半角
-          .replace(/[^A-Za-z]/g, "") // 非英字除去
+          )
+          .replace(/[^A-Za-z]/g, "")
           .toUpperCase();
         lettersEl.value = cleaned;
       });
@@ -219,19 +217,18 @@
         const original = goBtn.textContent;
         goBtn.textContent = "生成中…";
 
-        const letters = lettersEl.value.trim().toUpperCase(); // 空でもOK
+        const letters = lettersEl.value.trim().toUpperCase();
         const count = parseInt(countEl.value, 10);
         const jpWanted = jpEl.checked;
 
         try {
-          // サーバー到達確認（任意：失敗すると早めに通知）
-          // const ping = await fetch("/health"); if(!ping.ok) throw new Error("Server not ready");
-
-          const res = await fetch("/api/generate", {
+          const API_BASE = "https://あなたのrender名.onrender.com"; // ←ここを自分のURLに！
+          const res = await fetch(`${API_BASE}/api/generate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ letters, count, jpWanted }),
           });
+
           const data = await res.json();
           if (!res.ok) throw new Error((data && data.error) || "Server error");
 
