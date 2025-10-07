@@ -6,11 +6,11 @@
     <title>Lear-GPT (Architecture)</title>
     <style>
       :root {
-        --bg: #0f2740;
-        --panel: #1b3960;
-        --ink: #f9f2c6;
+        --bg: #0f2740; /* 濃紺 */
+        --panel: #1b3960; /* ひとつ明るい紺 */
+        --ink: #f9f2c6; /* 黄味がかった金色 */
         --ink-dim: #cfc89d;
-        --accent: #ffe066;
+        --accent: #ffe066; /* タイトルの金色 */
       }
       html,
       body {
@@ -45,6 +45,7 @@
         white-space: pre;
         min-height: 1.2em;
       }
+      /* タイピング風 */
       .caret {
         display: inline-block;
         width: 8px;
@@ -57,6 +58,7 @@
           opacity: 0;
         }
       }
+
       .panel {
         background: var(--panel);
         border: 1px solid #0b1e33;
@@ -165,6 +167,7 @@
 
         <div class="actions">
           <button id="go">生成</button>
+          <button id="fs" type="button" title="全画面の切り替え">全画面</button>
           <label style="display: flex; align-items: center; gap: 8px">
             <input id="jp" type="checkbox" /> 日本語訳を付ける
           </label>
@@ -197,14 +200,15 @@
         const cleaned = (lettersEl.value || "")
           .replace(/[Ａ-Ｚａ-ｚ]/g, (s) =>
             String.fromCharCode(s.charCodeAt(0) - 0xfee0),
-          )
-          .replace(/[^A-Za-z]/g, "")
+          ) // 全角→半角
+          .replace(/[^A-Za-z]/g, "") // 非英字除去
           .toUpperCase();
         lettersEl.value = cleaned;
       });
 
       /* 生成 */
       const goBtn = document.getElementById("go");
+      const fsBtn = document.getElementById("fs");
       const out = document.getElementById("out");
       const errBox = document.getElementById("err");
       const countEl = document.getElementById("count");
@@ -217,20 +221,16 @@
         const original = goBtn.textContent;
         goBtn.textContent = "生成中…";
 
-        const letters = lettersEl.value.trim().toUpperCase();
+        const letters = lettersEl.value.trim().toUpperCase(); // 空でもOK
         const count = parseInt(countEl.value, 10);
         const jpWanted = jpEl.checked;
 
         try {
-          // ✅ Render側のAPIエンドポイント
-          const API_BASE = "https://lear-gpt-architecture.onrender.com";
-
-          const res = await fetch(`${API_BASE}/api/generate`, {
+          const res = await fetch("/api/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ letters, count, jpWanted }),
           });
-
           const data = await res.json();
           if (!res.ok) throw new Error((data && data.error) || "Server error");
 
@@ -246,6 +246,20 @@
         }
       }
       goBtn.addEventListener("click", generate);
+
+      /* フルスクリーン切替（追加） */
+      function toggleFullscreen() {
+        const doc = document;
+        const docEl = document.documentElement;
+        if (!doc.fullscreenElement) {
+          if (docEl.requestFullscreen) docEl.requestFullscreen();
+        } else {
+          if (doc.exitFullscreen) doc.exitFullscreen();
+        }
+      }
+      fsBtn.addEventListener("click", toggleFullscreen);
+
+      /* ESC で全画面解除時にボタン表示を戻すなどのUI変更は行いません（要望通り最小変更） */
     </script>
   </body>
 </html>
